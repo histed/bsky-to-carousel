@@ -29,7 +29,7 @@ Roadmap and pending decisions for bsky-to-carousel. Design rationale lives in
   at normal size (as if there were no quote), and the *quoted* post should be
   the smaller, compressible part.
 - **Expand quoted user handles to display names.** Show the quoted account as
-  `@"First Last"` (its `displayName`) rather than the raw
+  `@First Last` (its `displayName`, no quotes) rather than the raw
   `@handle.bsky.social`. (Same idea may apply to in-text `@mentions` via
   facets.)
 - **Link cards styled like Bluesky.** Pasted links / external embeds
