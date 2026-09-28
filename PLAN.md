@@ -14,6 +14,15 @@ Roadmap and pending decisions for bsky-to-carousel. Design rationale lives in
 
 ## Next
 
+- **Uniform slide size + pack two posts when there's room.** Revisit the current
+  content-driven height: instead go back to a **fixed, always-identical PNG
+  size** (1080×1350) for every slide, but when a post leaves lots of empty space
+  at the bottom, fit the *next* post onto the same slide (with a divider)
+  instead of padding. Effectively a bin-packing pass over the thread: fill each
+  fixed-size slide with one or more consecutive posts. Supersedes the shipped
+  variable-height behavior.
+  - Open questions: min gap before packing a second post; never split a single
+    post across slides; how `n/N` numbering works when a slide holds >1 post.
 - **Quote sizing: keep the quoting post at normal text size.** When a slide has
   a quote and overflows, the fit step currently shrinks the *main* post text
   while the quote card stays large (backwards). The quoting post should render
