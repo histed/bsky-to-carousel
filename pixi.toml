@@ -1,0 +1,18 @@
+[project]
+authors = ["Mark Histed <mhisted@gmail.com>"]
+channels = ["conda-forge"]
+description = "Add a short description here"
+name = "bsky-to-carousel"
+platforms = ["osx-64"]
+version = "0.1.0"
+
+[tasks]
+test = "pytest -q"
+
+[dependencies]
+python = "3.12.*"
+requests = ">=2.34.2,<3"
+pytest = ">=9.1.1,<10"
+
+[pypi-dependencies]
+playwright = ">=1.63.0, <2"
