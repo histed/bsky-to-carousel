@@ -32,9 +32,14 @@ ignoring other people's replies.
 
 Each post becomes one `NN.png` in the output directory (`-o`, default
 `bsky_slides/`), numbered `01.png`, `02.png`, … in thread order (root first).
-Every image is exactly **1080×1350** (Instagram 4:5). Each slide shows the
-author's avatar, display name, `@handle`, the post text (auto-shrunk to fit),
-any embedded images, and an `n/N` position footer.
+Each slide shows the author's avatar, display name, `@handle`, the post text,
+any embedded images, a quoted post (if any) as a smaller nested card, and an
+`n/N` position footer.
+
+**Size:** every image is **1080px wide**. Height is content-driven up to a
+**1350px** cap (Instagram 4:5): a post longer than that has its text
+auto-shrunk to fit 1350px, while a shorter post produces a shorter image
+cropped to its content instead of being padded with empty space.
 
 ### Themes
 
