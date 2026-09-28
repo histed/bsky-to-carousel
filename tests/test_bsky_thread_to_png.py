@@ -197,3 +197,26 @@ def test_slide_html_renders_image_tags():
     out = mod.slide_html(make_post("did:a", embed=embed), 1, 1, dark=False)
     assert 'class="media" src="https://cdn/a.jpg"' in out
     assert 'alt="cat"' in out
+
+
+# --- thread_markdown --------------------------------------------------------
+
+def test_thread_markdown_numbers_and_text():
+    posts = [make_post("did:a", name="Alice", handle="alice.test", text="first"),
+             make_post("did:a", name="Alice", handle="alice.test", text="second")]
+    md = mod.thread_markdown(posts)
+    assert "## 1/2 — Alice (@alice.test)" in md
+    assert "## 2/2 — Alice (@alice.test)" in md
+    assert "first" in md and "second" in md
+
+
+def test_thread_markdown_lists_images_with_alt():
+    embed = {"$type": "app.bsky.embed.images#view",
+             "images": [{"fullsize": "https://cdn/a.jpg", "alt": "a cat"}]}
+    md = mod.thread_markdown([make_post("did:a", embed=embed)])
+    assert "- image: https://cdn/a.jpg — alt: a cat" in md
+
+
+def test_thread_markdown_empty_text_placeholder():
+    md = mod.thread_markdown([make_post("did:a", text="")])
+    assert "_(no text)_" in md
