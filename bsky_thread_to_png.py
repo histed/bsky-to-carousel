@@ -132,18 +132,43 @@ FIT_JS = """() => {
 }"""
 
 
-def main():
-    from playwright.sync_api import sync_playwright
+def thread_markdown(posts):
+    """Human-readable, browser-free preview of the collected self-thread."""
+    lines = []
+    total = len(posts)
+    for i, post in enumerate(posts, 1):
+        a = post["author"]
+        who = a.get("displayName") or a["handle"]
+        lines.append(f"## {i}/{total} — {who} (@{a['handle']})")
+        lines.append("")
+        lines.append(post["record"].get("text", "") or "_(no text)_")
+        for url, alt in embed_images(post):
+            lines.append("")
+            lines.append(f"- image: {url}" + (f" — alt: {alt}" if alt else ""))
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
 
+
+def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("url")
     ap.add_argument("-o", "--outdir", default="bsky_slides")
     ap.add_argument("--dark", action="store_true")
+    ap.add_argument("--markdown", metavar="FILE",
+                    help="write a text-only preview of the collected thread to FILE "
+                         "(no browser needed) and skip PNG rendering")
     args = ap.parse_args()
 
     actor, rkey = parse_url(args.url)
     did = resolve_did(actor)
     posts = collect_self_thread(get_thread(f"at://{did}/app.bsky.feed.post/{rkey}"))
+
+    if args.markdown:
+        Path(args.markdown).write_text(thread_markdown(posts), encoding="utf-8")
+        print(args.markdown)
+        return
+
+    from playwright.sync_api import sync_playwright
 
     out = Path(args.outdir)
     out.mkdir(parents=True, exist_ok=True)

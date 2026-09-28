@@ -8,6 +8,7 @@ version = "0.1.0"
 
 [tasks]
 test = "pytest -q"
+preview = "python bsky_thread_to_png.py"
 
 [dependencies]
 python = "3.12.*"
