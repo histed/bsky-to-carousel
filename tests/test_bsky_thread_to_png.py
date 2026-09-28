@@ -78,9 +78,11 @@ def test_embed_images_images_view_suffix():
 
 
 def test_embed_images_record_with_media():
+    # media is itself a typed view (images#view here), per the real API
     embed = {
         "$type": "app.bsky.embed.recordWithMedia#view",
-        "media": {"images": [{"fullsize": "https://cdn/m.jpg", "alt": "x"}]},
+        "media": {"$type": "app.bsky.embed.images#view",
+                  "images": [{"fullsize": "https://cdn/m.jpg", "alt": "x"}]},
     }
     assert mod.embed_images(make_post("did:a", embed=embed)) == [("https://cdn/m.jpg", "x")]
 
@@ -101,6 +103,86 @@ def test_embed_images_external_without_thumb():
 def test_embed_images_unknown_type():
     embed = {"$type": "app.bsky.embed.record#view", "record": {}}
     assert mod.embed_images(make_post("did:a", embed=embed)) == []
+
+
+def test_embed_images_record_with_media_external_thumb():
+    # recordWithMedia whose media is an external card -> use its thumb
+    embed = {
+        "$type": "app.bsky.embed.recordWithMedia#view",
+        "media": {"$type": "app.bsky.embed.external#view",
+                  "external": {"thumb": "https://cdn/t.jpg"}},
+        "record": {"$type": "app.bsky.embed.record#view", "record": {}},
+    }
+    assert mod.embed_images(make_post("did:a", embed=embed)) == [("https://cdn/t.jpg", "")]
+
+
+# --- embed_quote ------------------------------------------------------------
+
+def _quote_view(handle, text, *, name=None, avatar=None, images=None):
+    """A app.bsky.embed.record#view wrapping a viewRecord."""
+    rec = {
+        "$type": "app.bsky.embed.record#viewRecord",
+        "author": {"handle": handle, "did": "did:q"},
+        "value": {"text": text},
+    }
+    if name is not None:
+        rec["author"]["displayName"] = name
+    if avatar is not None:
+        rec["author"]["avatar"] = avatar
+    if images:
+        rec["embeds"] = [{"$type": "app.bsky.embed.images#view",
+                          "images": [{"fullsize": u, "alt": a} for u, a in images]}]
+    return {"$type": "app.bsky.embed.record#view", "record": rec}
+
+
+def test_embed_quote_none_without_embed():
+    assert mod.embed_quote(make_post("did:a")) is None
+
+
+def test_embed_quote_ignores_plain_media_embed():
+    embed = {"$type": "app.bsky.embed.images#view",
+             "images": [{"fullsize": "https://cdn/a.jpg", "alt": ""}]}
+    assert mod.embed_quote(make_post("did:a", embed=embed)) is None
+
+
+def test_embed_quote_record_view():
+    embed = _quote_view("bob.test", "quoted words", name="Bob", avatar="https://cdn/av.jpg")
+    q = mod.embed_quote(make_post("did:a", embed=embed))
+    assert q == {"name": "Bob", "handle": "bob.test", "avatar": "https://cdn/av.jpg",
+                 "text": "quoted words", "images": []}
+
+
+def test_embed_quote_name_falls_back_to_handle():
+    q = mod.embed_quote(make_post("did:a", embed=_quote_view("bob.test", "x")))
+    assert q["name"] == "bob.test"
+
+
+def test_embed_quote_collects_quoted_images():
+    embed = _quote_view("bob.test", "with pic", images=[("https://cdn/q.jpg", "a dog")])
+    q = mod.embed_quote(make_post("did:a", embed=embed))
+    assert q["images"] == [("https://cdn/q.jpg", "a dog")]
+
+
+def test_embed_quote_record_with_media():
+    # recordWithMedia#view nests the quoted record under record.record
+    inner = _quote_view("bob.test", "quoted")["record"]
+    embed = {
+        "$type": "app.bsky.embed.recordWithMedia#view",
+        "media": {"$type": "app.bsky.embed.images#view",
+                  "images": [{"fullsize": "https://cdn/m.jpg", "alt": ""}]},
+        "record": {"$type": "app.bsky.embed.record#view", "record": inner},
+    }
+    post = make_post("did:a", embed=embed)
+    q = mod.embed_quote(post)
+    assert q["handle"] == "bob.test" and q["text"] == "quoted"
+    # the media (not the quote) is what embed_images returns
+    assert mod.embed_images(post) == [("https://cdn/m.jpg", "")]
+
+
+def test_embed_quote_blocked_returns_none():
+    embed = {"$type": "app.bsky.embed.record#view",
+             "record": {"$type": "app.bsky.embed.record#viewBlocked", "blocked": True}}
+    assert mod.embed_quote(make_post("did:a", embed=embed)) is None
 
 
 # --- collect_self_thread ----------------------------------------------------
@@ -197,6 +279,20 @@ def test_slide_html_renders_image_tags():
     out = mod.slide_html(make_post("did:a", embed=embed), 1, 1, dark=False)
     assert 'class="media" src="https://cdn/a.jpg"' in out
     assert 'alt="cat"' in out
+
+
+def test_slide_html_renders_quote_card():
+    embed = _quote_view("bob.test", "quoted words", name="Bob")
+    out = mod.slide_html(make_post("did:a", embed=embed), 1, 1, dark=False)
+    assert 'class="quote"' in out
+    assert 'class="qname">Bob<' in out
+    assert '@bob.test' in out
+    assert 'class="qtext">quoted words<' in out
+
+
+def test_slide_html_no_quote_card_when_absent():
+    out = mod.slide_html(make_post("did:a", text="plain"), 1, 1, dark=False)
+    assert 'class="quote"' not in out
 
 
 # --- thread_markdown --------------------------------------------------------
