@@ -15,7 +15,10 @@ pixi run playwright install chromium   # one-time: browser for PNG rendering
 ## Usage
 
 ```
-# Render PNGs (needs chromium, see above)
+# Render PNGs, light theme (default) — needs chromium, see above
+pixi run python bsky_thread_to_png.py https://bsky.app/profile/HANDLE/post/RKEY -o slides
+
+# Same, dark theme
 pixi run python bsky_thread_to_png.py https://bsky.app/profile/HANDLE/post/RKEY -o slides --dark
 
 # Text-only preview of the collected thread — no browser needed
@@ -24,6 +27,24 @@ pixi run preview https://bsky.app/profile/HANDLE/post/RKEY --markdown preview.md
 
 The tool walks up to the thread root and follows the author's own replies down,
 ignoring other people's replies.
+
+## Output
+
+Each post becomes one `NN.png` in the output directory (`-o`, default
+`bsky_slides/`), numbered `01.png`, `02.png`, … in thread order (root first).
+Every image is exactly **1080×1350** (Instagram 4:5). Each slide shows the
+author's avatar, display name, `@handle`, the post text (auto-shrunk to fit),
+any embedded images, and an `n/N` position footer.
+
+### Themes
+
+**Light is the default; pass `--dark` for the dark theme.**
+
+| Role | Light (default) | Dark (`--dark`) |
+| --- | --- | --- |
+| Background | `#ffffff` | `#161e27` |
+| Text | `#0b0f14` | `#f1f3f5` |
+| Secondary (handle, footer, avatar placeholder) | `#5b6b7b` | `#8b98a5` |
 
 ## Tasks
 
