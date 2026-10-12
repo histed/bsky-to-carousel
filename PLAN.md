@@ -9,25 +9,21 @@ Roadmap and pending decisions for bsky-to-carousel. Design rationale lives in
 - Extract script from design doc; verify Bluesky API field names against the live API.
 - pixi-managed env; offline unit tests + opt-in live API tests.
 - `--markdown` browser-free thread preview.
-- Variable slide height: short posts crop to content, long posts fill 1350px with font auto-shrink.
 - Render quoted posts as a smaller nested card (avatar, name, @handle, text, quoted image).
+- **Fixed canvas, floating variable-height card.** Every PNG is an identical
+  1080×1350 (4:5) canvas; the post renders as a rounded card ~800px wide,
+  centered with a transparent gutter each side and top-aligned, whose height
+  follows its content. The card shrinks to fit when it would overflow.
+- **Canvas background.** `--bgcolor HEX` fills the canvas (default `#bde0fe`, a
+  light sky blue); `--bgcolor none` leaves it transparent (RGBA output) for
+  compositing a background later.
+- **Quote sizing: keep the quoting post at normal text size.** On overflow the
+  fit step compresses the *quoted* card (quote text, then quoted image) and only
+  shrinks the main post text as a last resort, so the quoting post reads as if
+  there were no quote.
 
 ## Next
 
-- **Uniform slide size + pack two posts when there's room.** Revisit the current
-  content-driven height: instead go back to a **fixed, always-identical PNG
-  size** (1080×1350) for every slide, but when a post leaves lots of empty space
-  at the bottom, fit the *next* post onto the same slide (with a divider)
-  instead of padding. Effectively a bin-packing pass over the thread: fill each
-  fixed-size slide with one or more consecutive posts. Supersedes the shipped
-  variable-height behavior.
-  - Open questions: min gap before packing a second post; never split a single
-    post across slides; how `n/N` numbering works when a slide holds >1 post.
-- **Quote sizing: keep the quoting post at normal text size.** When a slide has
-  a quote and overflows, the fit step currently shrinks the *main* post text
-  while the quote card stays large (backwards). The quoting post should render
-  at normal size (as if there were no quote), and the *quoted* post should be
-  the smaller, compressible part.
 - **Expand quoted user handles to display names.** Show the quoted account as
   `@First Last` (its `displayName`, no quotes) rather than the raw
   `@handle.bsky.social`. (Same idea may apply to in-text `@mentions` via

@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
-Bluesky thread -> one PNG per post (1080x1350, Instagram 4:5).
+Bluesky thread -> one PNG per post. Each PNG is a fixed 1080x1350 (Instagram
+4:5) canvas with a solid --bgcolor (default light sky blue) or transparent; the
+post renders as a rounded card ~800px wide, centered and top-aligned, whose
+height follows its content.
 
 Usage:
     pip install requests playwright
@@ -22,7 +25,15 @@ from pathlib import Path
 import requests
 
 API = "https://public.api.bsky.app/xrpc"
+# Canvas is a fixed, transparent 1080x1350 (4:5). The card floats on it: a fixed
+# width, centered with a transparent gutter each side, top-aligned, with a
+# transparent margin above and below. The card's height is content-driven and
+# capped (CARD_MAX_H) so it always fits the canvas.
 W, H = 1080, 1350
+CARD_W = 800          # card width; the rest of the 1080 is transparent gutter
+CARD_TOP = 70         # margin above (and min below) the card, shows the canvas bg
+CARD_MAX_H = H - 2 * CARD_TOP
+DEFAULT_BG = "#bde0fe"  # light sky blue canvas; --bgcolor none for transparent
 
 
 def parse_url(url):
@@ -148,7 +159,12 @@ def _quote_html(q, esc):
     )
 
 
-def slide_html(post, idx, total, dark):
+def canvas_bg_css(bgcolor):
+    """Resolve the --bgcolor value to a CSS background for the canvas."""
+    return "transparent" if bgcolor.strip().lower() in ("none", "transparent", "") else bgcolor
+
+
+def slide_html(post, idx, total, dark, bgcolor=DEFAULT_BG):
     esc = html.escape
     a = post["author"]
     name = esc(a.get("displayName") or a["handle"])
@@ -161,48 +177,71 @@ def slide_html(post, idx, total, dark):
     )
     quote = _quote_html(embed_quote(post), esc)
     bg, fg, sub = ("#161e27", "#f1f3f5", "#8b98a5") if dark else ("#ffffff", "#0b0f14", "#5b6b7b")
+    canvas = canvas_bg_css(bgcolor)
     return f"""<!doctype html><html><head><meta charset="utf-8"><style>
 *{{box-sizing:border-box;margin:0}}
-html,body{{width:{W}px;background:{bg};color:{fg};
+html,body{{width:{W}px;background:transparent;color:{fg};
   font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Color Emoji",sans-serif}}
-/* Height is content-driven, capped at {H}px by the fit step in JS. */
-.wrap{{display:flex;flex-direction:column;padding:90px 90px 70px}}
-.head{{display:flex;align-items:center;gap:28px;margin-bottom:50px}}
-.av{{width:110px;height:110px;border-radius:50%;background:{sub};object-fit:cover;flex:none}}
-.name{{font-size:44px;font-weight:700}}
-.handle{{font-size:34px;color:{sub}}}
-#body{{flex:1;display:flex;flex-direction:column;gap:36px}}
-#text{{font-size:64px;line-height:1.3;white-space:pre-wrap;word-wrap:break-word}}
-.media{{max-width:100%;max-height:600px;border-radius:24px;object-fit:contain;align-self:flex-start}}
-.quote{{border:2px solid {sub};border-radius:24px;padding:32px 36px;display:flex;
-  flex-direction:column;gap:20px}}
-.qhead{{display:flex;align-items:center;gap:18px}}
-.qav{{width:56px;height:56px;border-radius:50%;background:{sub};object-fit:cover;flex:none}}
-.qname{{font-size:32px;font-weight:700}}
-.qhandle{{font-size:26px;color:{sub}}}
-.qtext{{font-size:40px;line-height:1.3;white-space:pre-wrap;word-wrap:break-word}}
-.qmedia{{max-width:100%;max-height:360px;border-radius:16px;object-fit:contain;align-self:flex-start}}
-.foot{{font-size:30px;color:{sub};text-align:right;margin-top:30px}}
-</style></head><body><div class="wrap">
+/* Fixed {W}x{H} canvas (transparent or a solid --bgcolor). The card floats on
+   it: {CARD_W}px wide, centered, top-aligned. Card height is content-driven and
+   capped at {CARD_MAX_H}px by the fit step in JS so it always fits the canvas. */
+.canvas{{width:{W}px;height:{H}px;background:{canvas};
+  display:flex;justify-content:center;align-items:flex-start;padding:{CARD_TOP}px 0}}
+.card{{width:{CARD_W}px;background:{bg};border-radius:40px;overflow:hidden;
+  display:flex;flex-direction:column;padding:64px 56px 52px}}
+.head{{display:flex;align-items:center;gap:22px;margin-bottom:40px}}
+.av{{width:88px;height:88px;border-radius:50%;background:{sub};object-fit:cover;flex:none}}
+.name{{font-size:36px;font-weight:700}}
+.handle{{font-size:28px;color:{sub}}}
+#body{{flex:1;display:flex;flex-direction:column;gap:28px}}
+#text{{font-size:48px;line-height:1.3;white-space:pre-wrap;word-wrap:break-word}}
+.media{{max-width:100%;max-height:520px;border-radius:20px;object-fit:contain;align-self:flex-start}}
+.quote{{border:2px solid {sub};border-radius:20px;padding:26px 30px;display:flex;
+  flex-direction:column;gap:16px}}
+.qhead{{display:flex;align-items:center;gap:14px}}
+.qav{{width:46px;height:46px;border-radius:50%;background:{sub};object-fit:cover;flex:none}}
+.qname{{font-size:26px;font-weight:700}}
+.qhandle{{font-size:21px;color:{sub}}}
+.qtext{{font-size:30px;line-height:1.3;white-space:pre-wrap;word-wrap:break-word}}
+.qmedia{{max-width:100%;max-height:300px;border-radius:14px;object-fit:contain;align-self:flex-start}}
+.foot{{font-size:24px;color:{sub};text-align:right;margin-top:26px}}
+</style></head><body><div class="canvas"><div class="card">
 <div class="head">{f'<img class="av" src="{esc(avatar)}">' if avatar else '<div class="av"></div>'}
 <div><div class="name">{name}</div><div class="handle">@{handle}</div></div></div>
 <div id="body"><div id="text">{text}</div>{imgs}{quote}</div>
 <div class="foot">{idx}/{total}</div>
-</div></body></html>"""
+</div></div></body></html>"""
 
 
-# Shrink the main post text until the whole slide fits MAX_H, then report the
-# final slide height (clamped to MAX_H). A slide shorter than MAX_H keeps its
-# natural height so the PNG is cropped to the content instead of padded.
+# Shrink content until the card fits CARD_MAX_H so it never overflows the fixed
+# canvas. The quote is compressed first (quoted text, then quoted image) so the
+# quoting post keeps its normal size; the post's own text shrinks only as a last
+# resort. Returns the final card height (clamped), for callers that want it.
 FIT_JS = """() => {
-  const MAX_H = %d, MIN_FONT = 24;
+  const MAX_H = %d, MIN_MAIN = 20, MIN_QUOTE = 16, MIN_QIMG = 110;
   const t = document.getElementById('text');
-  const wrap = document.querySelector('.wrap');
-  const h = () => Math.ceil(wrap.getBoundingClientRect().height);
-  let s = 64;
-  while (h() > MAX_H && s > MIN_FONT) { s -= 2; t.style.fontSize = s + 'px'; }
+  const card = document.querySelector('.card');
+  const q = document.querySelector('.qtext');
+  const qmedia = document.querySelectorAll('.qmedia');
+  const h = () => Math.ceil(card.getBoundingClientRect().height);
+
+  // Compress the quote first so the quoting post keeps its normal size:
+  // (1) shrink the quoted text, (2) then shrink the quoted image.
+  if (q) {
+    let qs = 30;
+    while (h() > MAX_H && qs > MIN_QUOTE) { qs -= 2; q.style.fontSize = qs + 'px'; }
+  }
+  if (qmedia.length) {
+    let cap = 300;
+    while (h() > MAX_H && cap > MIN_QIMG) {
+      cap -= 20; qmedia.forEach(m => { m.style.maxHeight = cap + 'px'; });
+    }
+  }
+  // Only as a last resort (the post's own text is too long to fit) shrink it.
+  let s = 48;
+  while (h() > MAX_H && s > MIN_MAIN) { s -= 2; t.style.fontSize = s + 'px'; }
   return Math.min(h(), MAX_H);
-}""" % H
+}""" % CARD_MAX_H
 
 
 def thread_markdown(posts):
@@ -235,6 +274,9 @@ def main():
     ap.add_argument("url")
     ap.add_argument("-o", "--outdir", default="bsky_slides")
     ap.add_argument("--dark", action="store_true")
+    ap.add_argument("--bgcolor", default=DEFAULT_BG,
+                    help=f"canvas background as a hex color (default {DEFAULT_BG}, a light "
+                         f"sky blue); use 'none' for a transparent canvas")
     ap.add_argument("--markdown", metavar="FILE",
                     help="write a text-only preview of the collected thread to FILE "
                          "(no browser needed) and skip PNG rendering")
@@ -259,11 +301,14 @@ def main():
         # shrink it; the final screenshot is clipped to the fitted height (<= H).
         page = browser.new_page(viewport={"width": W, "height": H * 4})
         for i, post in enumerate(posts, 1):
-            page.set_content(slide_html(post, i, len(posts), args.dark), wait_until="networkidle")
-            height = int(page.evaluate(FIT_JS))
+            page.set_content(slide_html(post, i, len(posts), args.dark, args.bgcolor),
+                             wait_until="networkidle")
+            page.evaluate(FIT_JS)  # shrink the card so it fits CARD_MAX_H
             f = out / f"{i:02d}.png"
-            # Crop to the fitted height so short posts get a shorter image.
-            page.screenshot(path=str(f), clip={"x": 0, "y": 0, "width": W, "height": height})
+            # Every PNG is the full fixed canvas; omit_background keeps a
+            # 'none' bgcolor transparent in the output.
+            page.screenshot(path=str(f), clip={"x": 0, "y": 0, "width": W, "height": H},
+                            omit_background=True)
             print(f)
         browser.close()
 

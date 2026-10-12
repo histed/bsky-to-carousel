@@ -295,6 +295,39 @@ def test_slide_html_no_quote_card_when_absent():
     assert 'class="quote"' not in out
 
 
+# --- canvas / card / bgcolor ------------------------------------------------
+
+def test_canvas_bg_css_passes_hex_through():
+    assert mod.canvas_bg_css("#bde0fe") == "#bde0fe"
+    assert mod.canvas_bg_css("#FFD6E7") == "#FFD6E7"
+
+
+def test_canvas_bg_css_none_and_blank_are_transparent():
+    for v in ("none", "None", "transparent", "", "  "):
+        assert mod.canvas_bg_css(v) == "transparent"
+
+
+def test_slide_html_has_canvas_and_card():
+    out = mod.slide_html(make_post("did:a", text="hi"), 1, 1, dark=False)
+    assert 'class="canvas"' in out
+    assert 'class="card"' in out
+
+
+def test_slide_html_default_bgcolor_is_sky_blue():
+    out = mod.slide_html(make_post("did:a"), 1, 1, dark=False)
+    assert mod.DEFAULT_BG == "#bde0fe"
+    assert f"background:{mod.DEFAULT_BG}" in out
+
+
+def test_slide_html_custom_and_transparent_bgcolor():
+    pink = mod.slide_html(make_post("did:a"), 1, 1, dark=False, bgcolor="#ffd6e7")
+    assert "background:#ffd6e7" in pink
+    clear = mod.slide_html(make_post("did:a"), 1, 1, dark=False, bgcolor="none")
+    # the canvas is transparent; the card keeps its own (light) fill
+    assert ".canvas{width:1080px;height:1350px;background:transparent" in clear
+    assert "#ffffff" in clear
+
+
 # --- thread_markdown --------------------------------------------------------
 
 def test_thread_markdown_numbers_and_text():
