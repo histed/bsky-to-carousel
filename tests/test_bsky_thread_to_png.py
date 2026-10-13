@@ -385,6 +385,14 @@ def test_slide_group_two_cards_each_with_header_and_footer():
     assert "first" in out and "second" in out
 
 
+def test_cards_have_bsky_butterfly():
+    # one per single card, and one per card on a packed slide
+    single = mod.slide_html(make_post("did:a"), 1, 1, dark=False)
+    assert single.count('class="bsky"') == 1
+    g = [(1, make_post("did:a")), (2, make_post("did:a"))]
+    assert mod.slide_group_html(g, 2, dark=False).count('class="bsky"') == 2
+
+
 def test_slide_group_single_matches_slide_html():
     p = make_post("did:a", text="solo")
     assert mod.slide_group_html([(2, p)], 5, dark=False) == mod.slide_html(p, 2, 5, dark=False)

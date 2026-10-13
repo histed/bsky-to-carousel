@@ -201,9 +201,26 @@ def canvas_bg_css(bgcolor):
     return "transparent" if bgcolor.strip().lower() in ("none", "transparent", "") else bgcolor
 
 
+# Bluesky butterfly logo (official brand path), tinted via CSS `color`.
+BSKY_SVG = (
+    '<svg class="bsky" viewBox="0 0 568 501" xmlns="http://www.w3.org/2000/svg" '
+    'aria-hidden="true"><path fill="currentColor" d="M123.121 33.6637C188.241 '
+    '82.5526 258.281 181.681 284 234.873C309.719 181.681 379.759 82.5526 444.879 '
+    '33.6637C491.866 -1.61183 568 -28.9064 568 57.9464C568 75.2916 558.055 203.659 '
+    '552.222 224.501C531.947 296.954 458.067 315.434 392.347 304.249C507.222 323.8 '
+    '536.444 388.56 473.333 453.32C353.473 576.312 301.061 422.461 287.631 '
+    '383.039C285.169 375.812 284.017 372.431 284 375.306C283.983 372.431 282.831 '
+    '375.812 280.369 383.039C266.939 422.461 214.527 576.312 94.6667 453.32C31.5556 '
+    '388.56 60.7778 323.8 175.653 304.249C109.933 315.434 36.0535 296.954 15.7778 '
+    '224.501C9.94525 203.659 0 75.2916 0 57.9464C0 -28.9064 76.1335 -1.61183 123.121 '
+    '33.6637Z"/></svg>'
+)
+
+
 def _card_html(idx, post, total, esc, header=True):
     """One post card: author header, body (text, images, quote), and n/N footer.
-    `header` can suppress the author row, but every card shows it by default."""
+    `header` can suppress the author row, but every card shows it by default.
+    A Bluesky butterfly sits in the top-right corner."""
     text = esc(post["record"].get("text", ""))
     imgs = "".join(
         f'<img class="media" src="{esc(u)}" alt="{esc(alt)}">'
@@ -221,7 +238,7 @@ def _card_html(idx, post, total, esc, header=True):
         head = (f'<div class="head">{av}'
                 f'<div><div class="name">{name}</div>'
                 f'<div class="handle">@{handle}</div></div></div>')
-    return (f'<div class="card">{head}'
+    return (f'<div class="card">{BSKY_SVG}{head}'
             f'<div class="body"><div class="text">{text}</div>{imgs}{link}{quote}</div>'
             f'<div class="foot">{idx}/{total}</div></div>')
 
@@ -247,9 +264,10 @@ html,body{{width:{W}px;background:transparent;color:{fg};
 .canvas{{width:{W}px;height:{H}px;background:{canvas};
   display:flex;justify-content:center;align-items:flex-start;padding:{CARD_TOP}px 0}}
 .stack{{width:{CARD_W}px;display:flex;flex-direction:column;gap:{CARD_GAP}px}}
-.card{{width:100%;background:{bg};border-radius:40px;overflow:hidden;
-  display:flex;flex-direction:column;padding:64px 56px 52px}}
-.head{{display:flex;align-items:center;gap:22px;margin-bottom:40px}}
+.card{{width:100%;position:relative;background:{bg};border-radius:40px;overflow:hidden;
+  display:flex;flex-direction:column;padding:46px 56px 52px}}
+.bsky{{position:absolute;top:64px;right:56px;width:60px;height:auto;color:#1185fe}}
+.head{{display:flex;align-items:center;gap:22px;margin-bottom:40px;padding-right:76px}}
 .av{{width:88px;height:88px;border-radius:50%;background:{sub};object-fit:cover;flex:none}}
 .name{{font-size:36px;font-weight:700}}
 .handle{{font-size:28px;color:{sub}}}
