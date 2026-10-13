@@ -29,12 +29,26 @@ def test_resolve_did_returns_did():
 
 
 def _latest_rkey(did):
+    """Newest rkey for a post the account actually authored.
+
+    Skips reposts (whose post.uri belongs to another account and may be
+    unavailable -> getPostThread 400) and replies, so the thread fetch is for a
+    stable, self-owned root.
+    """
     import requests
     r = requests.get(f"{mod.API}/app.bsky.feed.getAuthorFeed",
-                     params={"actor": did, "limit": 1}, timeout=20)
+                     params={"actor": did, "limit": 30}, timeout=20)
     r.raise_for_status()
-    uri = r.json()["feed"][0]["post"]["uri"]  # at://did/app.bsky.feed.post/<rkey>
-    return uri.rsplit("/", 1)[1]
+    for item in r.json()["feed"]:
+        if "reason" in item:  # repost
+            continue
+        post = item["post"]
+        if post["author"]["did"] != did:
+            continue
+        if post["record"].get("reply"):  # reply, not a root
+            continue
+        return post["uri"].rsplit("/", 1)[1]  # at://did/app.bsky.feed.post/<rkey>
+    pytest.skip("no original top-level post found in the author feed")
 
 
 def test_get_thread_and_collect_shapes():
