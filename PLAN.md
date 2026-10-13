@@ -45,7 +45,10 @@ Roadmap and pending decisions for bsky-to-carousel. Design rationale lives in
 
 ## Next
 
-_Nothing planned right now._
+- **Warn when the output exceeds 20 slides.** Instagram carousels hold at most
+  20 images, so after packing, if a thread still produces more than 20 slides,
+  print a warning (to stderr) with the slide count and a hint to split it into
+  multiple carousels. Still render all slides.
 
 ## Known limitations (from the design doc)
 
