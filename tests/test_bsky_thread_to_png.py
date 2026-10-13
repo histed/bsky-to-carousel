@@ -385,6 +385,55 @@ def test_slide_group_two_cards_each_with_header_and_footer():
     assert "first" in out and "second" in out
 
 
+# --- in-text mentions (facets) ----------------------------------------------
+
+def _mention_record(text, bs, be, did):
+    return {"text": text,
+            "facets": [{"index": {"byteStart": bs, "byteEnd": be},
+                        "features": [{"$type": "app.bsky.richtext.facet#mention", "did": did}]}]}
+
+
+def test_render_text_plain_when_no_facets():
+    out = mod.render_text_html({"text": "hello <b>"}, __import__("html").escape)
+    assert out == "hello &lt;b&gt;"
+
+
+def test_render_text_mention_uses_display_name_in_blue():
+    # "hi @c-span.bsky.social !" — the handle spans bytes 3..22
+    text = "hi @c-span.bsky.social !"
+    bs = len("hi ".encode())
+    be = len("hi @c-span.bsky.social".encode())
+    rec = _mention_record(text, bs, be, "did:plc:x")
+    out = mod.render_text_html(rec, __import__("html").escape, {"did:plc:x": "C-SPAN"})
+    assert '<span class="mention">@C-SPAN</span>' in out
+    assert "c-span.bsky.social" not in out
+    assert out.startswith("hi ") and out.endswith(" !")
+
+
+def test_render_text_unresolved_keeps_handle():
+    text = "yo @a.bsky.social"
+    rec = _mention_record(text, 3, len(text.encode()), "did:plc:y")
+    out = mod.render_text_html(rec, __import__("html").escape, {})  # no name
+    assert '<span class="mention">@a.bsky.social</span>' in out
+
+
+def test_render_text_byte_offsets_with_multibyte():
+    # emoji before the mention: offsets are UTF-8 bytes, not chars
+    text = "😀 @a.bsky.social"
+    bs = len("😀 ".encode())            # 4 (emoji) + 1 (space) = 5
+    be = len(text.encode())
+    rec = _mention_record(text, bs, be, "did:plc:z")
+    out = mod.render_text_html(rec, __import__("html").escape, {"did:plc:z": "Al"})
+    assert out.startswith("😀 ")
+    assert '<span class="mention">@Al</span>' in out
+
+
+def test_mention_dids_collects_across_posts():
+    p1 = make_post("did:a"); p1["record"] = _mention_record("x @y", 2, 4, "did:plc:1")
+    p2 = make_post("did:b"); p2["record"] = _mention_record("z @w", 2, 4, "did:plc:2")
+    assert mod.mention_dids([p1, p2]) == {"did:plc:1", "did:plc:2"}
+
+
 def test_cards_have_bsky_butterfly():
     # one per single card, and one per card on a packed slide
     single = mod.slide_html(make_post("did:a"), 1, 1, dark=False)

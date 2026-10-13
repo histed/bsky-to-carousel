@@ -62,6 +62,21 @@ def get_thread(uri):
     return r.json()["thread"]
 
 
+def resolve_profiles(dids):
+    """Map each DID to its display name (falling back to handle) via getProfiles,
+    batched 25 at a time. Returns {} for no DIDs; used to label in-text mentions."""
+    names = {}
+    dids = list(dids)
+    for i in range(0, len(dids), 25):
+        chunk = dids[i:i + 25]
+        r = requests.get(f"{API}/app.bsky.actor.getProfiles",
+                         params=[("actors", d) for d in chunk], timeout=20)
+        r.raise_for_status()
+        for prof in r.json().get("profiles", []):
+            names[prof["did"]] = prof.get("displayName") or prof.get("handle", "")
+    return names
+
+
 def _author_did(node):
     """DID of a thread node's post author, or None for notFound/blocked nodes."""
     return (node or {}).get("post", {}).get("author", {}).get("did")
@@ -196,6 +211,53 @@ def _external_html(ext, esc):
             f'<div class="lcmeta">{domain}{title}{desc}</div></div>')
 
 
+def _mention_facets(record):
+    """(byteStart, byteEnd, did) for each mention facet in a post record."""
+    out = []
+    for f in record.get("facets") or []:
+        idx = f.get("index") or {}
+        bs, be = idx.get("byteStart"), idx.get("byteEnd")
+        if bs is None or be is None:
+            continue
+        for feat in f.get("features") or []:
+            if feat.get("$type", "").endswith("facet#mention") and feat.get("did"):
+                out.append((bs, be, feat["did"]))
+    return sorted(out)
+
+
+def mention_dids(posts):
+    """All DIDs mentioned across the thread's posts (for batch profile lookup)."""
+    dids = set()
+    for p in posts:
+        for _, _, did in _mention_facets(p["record"]):
+            dids.add(did)
+    return dids
+
+
+def render_text_html(record, esc, names=None):
+    """Post text as safe HTML. Mention facets become a blue span showing the
+    mentioned account's display name (from `names`: did -> displayName); when a
+    did is unresolved, the handle text as written is kept. Facet byte offsets
+    index the UTF-8 encoding, so we slice on bytes."""
+    text = record.get("text", "") or ""
+    spans = _mention_facets(record)
+    if not spans:
+        return esc(text)
+    raw = text.encode("utf-8")
+    names = names or {}
+    out, pos = [], 0
+    for bs, be, did in spans:
+        if bs < pos:  # overlapping/out-of-order; skip
+            continue
+        out.append(esc(raw[pos:bs].decode("utf-8", "ignore")))
+        name = names.get(did)
+        label = f"@{name}" if name else raw[bs:be].decode("utf-8", "ignore")
+        out.append(f'<span class="mention">{esc(label)}</span>')
+        pos = be
+    out.append(esc(raw[pos:].decode("utf-8", "ignore")))
+    return "".join(out)
+
+
 def canvas_bg_css(bgcolor):
     """Resolve the --bgcolor value to a CSS background for the canvas."""
     return "transparent" if bgcolor.strip().lower() in ("none", "transparent", "") else bgcolor
@@ -217,11 +279,11 @@ BSKY_SVG = (
 )
 
 
-def _card_html(idx, post, total, esc, header=True):
+def _card_html(idx, post, total, esc, header=True, names=None):
     """One post card: author header, body (text, images, quote), and n/N footer.
     `header` can suppress the author row, but every card shows it by default.
-    A Bluesky butterfly sits in the top-right corner."""
-    text = esc(post["record"].get("text", ""))
+    `names` labels in-text mentions. A Bluesky butterfly sits top-right."""
+    text = render_text_html(post["record"], esc, names)
     imgs = "".join(
         f'<img class="media" src="{esc(u)}" alt="{esc(alt)}">'
         for u, alt in embed_images(post)
@@ -243,15 +305,16 @@ def _card_html(idx, post, total, esc, header=True):
             f'<div class="foot">{idx}/{total}</div></div>')
 
 
-def slide_group_html(group, total, dark, bgcolor=DEFAULT_BG):
+def slide_group_html(group, total, dark, bgcolor=DEFAULT_BG, names=None):
     """A slide holding one or two posts. `group` is [(idx, post), ...]; each card
     shows the author header and its own n/N footer. Cards are stacked in a
-    top-aligned .stack and float on the fixed {W}x{H} canvas."""
+    top-aligned .stack and float on the fixed {W}x{H} canvas. `names` labels
+    in-text mentions (did -> display name)."""
     esc = html.escape
     bg, fg, sub = ("#161e27", "#f1f3f5", "#8b98a5") if dark else ("#ffffff", "#0b0f14", "#5b6b7b")
     canvas = canvas_bg_css(bgcolor)
     cards = "".join(
-        _card_html(idx, post, total, esc)
+        _card_html(idx, post, total, esc, names=names)
         for idx, post in group
     )
     return f"""<!doctype html><html><head><meta charset="utf-8"><style>
@@ -273,6 +336,7 @@ html,body{{width:{W}px;background:transparent;color:{fg};
 .handle{{font-size:26px;color:{sub}}}
 .body{{flex:1;display:flex;flex-direction:column;gap:28px}}
 .text{{font-size:48px;line-height:1.3;white-space:pre-wrap;word-wrap:break-word}}
+.mention{{color:#1185fe}}
 .media{{max-width:100%;max-height:520px;border-radius:20px;object-fit:contain;align-self:flex-start}}
 .linkcard{{border:2px solid {sub};border-radius:20px;overflow:hidden;
   display:flex;flex-direction:column}}
@@ -294,9 +358,9 @@ html,body{{width:{W}px;background:transparent;color:{fg};
 </style></head><body><div class="canvas"><div class="stack">{cards}</div></div></body></html>"""
 
 
-def slide_html(post, idx, total, dark, bgcolor=DEFAULT_BG):
+def slide_html(post, idx, total, dark, bgcolor=DEFAULT_BG, names=None):
     """A single-post slide (thin wrapper over slide_group_html)."""
-    return slide_group_html([(idx, post)], total, dark, bgcolor)
+    return slide_group_html([(idx, post)], total, dark, bgcolor, names)
 
 
 # Set the main text of every card to `uniformSize` (and the quote a bit smaller,
@@ -392,6 +456,7 @@ def main():
     actor, rkey = parse_url(args.url)
     did = resolve_did(actor)
     posts = collect_self_thread(get_thread(f"at://{did}/app.bsky.feed.post/{rkey}"))
+    names = resolve_profiles(mention_dids(posts))  # label in-text mentions
 
     if args.markdown:
         Path(args.markdown).write_text(thread_markdown(posts), encoding="utf-8")
@@ -411,7 +476,7 @@ def main():
         indexed = list(enumerate(posts, 1))  # [(idx, post), ...]
 
         def show(group):
-            page.set_content(slide_group_html(group, n, args.dark, args.bgcolor),
+            page.set_content(slide_group_html(group, n, args.dark, args.bgcolor, names),
                              wait_until="networkidle")
 
         # Pass 1: smallest main-text size any single post needs, so the whole

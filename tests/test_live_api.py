@@ -70,3 +70,11 @@ def test_get_thread_and_collect_shapes():
     # slide_html and thread_markdown must not raise on real data
     assert mod.slide_html(posts[0], 1, len(posts), dark=False)
     assert mod.thread_markdown(posts)
+
+
+def test_resolve_profiles_returns_display_names():
+    # bsky.app's own account resolves to a non-empty display label
+    did = mod.resolve_did(KNOWN_HANDLE)
+    names = mod.resolve_profiles({did})
+    assert names.get(did)  # display name or handle, never empty
+    assert mod.resolve_profiles(set()) == {}

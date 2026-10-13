@@ -33,21 +33,23 @@ Roadmap and pending decisions for bsky-to-carousel. Design rationale lives in
   top, then domain, title, and a clamped description. Replaces the old
   thumbnail-only treatment. In-text link facets are still plain text (see Next).
 
+- **Bluesky butterfly watermark.** The Bluesky butterfly (inline SVG, Bluesky
+  blue) sits in the top-right of every card, vertically aligned with the avatar.
+- **In-text mentions as blue display names.** Mention facets in the body render
+  as a blue span showing the mentioned account's display name (e.g.
+  `@Brian Beutler` instead of `@brianbeutler.bsky.social`). DIDs are resolved
+  once per run via `getProfiles`; an unresolved mention keeps the handle text.
+
 ## Next
 
-- **Expand quoted user handles to display names.** Show the quoted account as
+- **Expand quoted user handles to display names.** Show the *quoted* account as
   `@First Last` (its `displayName`, no quotes) rather than the raw
-  `@handle.bsky.social`. (Same idea may apply to in-text `@mentions` via
-  facets.)
-- **Bluesky butterfly watermark.** Show the small Bluesky butterfly logo in the
-  top-right corner of each card (inline SVG, tinted to match the theme), so the
-  carousel reads as Bluesky content.
-- **Facets so in-text links render as links.** Revisit facets so a pasted link
-  in the body renders as a real link rather than the truncated `www.exa…` plain
-  text currently shown. (Same mechanism can expand in-text `@mentions`.)
+  `@handle.bsky.social`. (Mentions in the quoted post's body are not yet
+  colored/expanded — only the quoting post's text is.)
 
 ## Known limitations (from the design doc)
 
-- Facets (links/mentions) render as plain text.
+- In-text link facets stay as plain (often truncated) text — intentionally not
+  linkified (the link card already shows the destination).
 - Video embeds not handled.
 - Alt text not surfaced in the rendered image (only in `--markdown`).
