@@ -39,13 +39,13 @@ Roadmap and pending decisions for bsky-to-carousel. Design rationale lives in
   as a blue span showing the mentioned account's display name with no `@` (e.g.
   `Brian Beutler` instead of `@brianbeutler.bsky.social`). DIDs are resolved
   once per run via `getProfiles`; an unresolved mention keeps the handle text.
+- **Quoted account shown by display name.** The nested quote card shows the
+  quoted account's display name (bold) with its `@handle` beneath. (Mentions in
+  the quoted post's body are not expanded — only the quoting post's text is.)
 
 ## Next
 
-- **Expand quoted user handles to display names.** Show the *quoted* account as
-  `@First Last` (its `displayName`, no quotes) rather than the raw
-  `@handle.bsky.social`. (Mentions in the quoted post's body are not yet
-  colored/expanded — only the quoting post's text is.)
+_Nothing planned right now._
 
 ## Known limitations (from the design doc)
 
