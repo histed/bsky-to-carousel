@@ -269,8 +269,8 @@ html,body{{width:{W}px;background:transparent;color:{fg};
 .bsky{{position:absolute;top:64px;right:56px;width:60px;height:auto;color:#1185fe}}
 .head{{display:flex;align-items:center;gap:22px;margin-bottom:40px;padding-right:76px}}
 .av{{width:88px;height:88px;border-radius:50%;background:{sub};object-fit:cover;flex:none}}
-.name{{font-size:36px;font-weight:700}}
-.handle{{font-size:28px;color:{sub}}}
+.name{{font-size:32px;font-weight:700}}
+.handle{{font-size:26px;color:{sub}}}
 .body{{flex:1;display:flex;flex-direction:column;gap:28px}}
 .text{{font-size:48px;line-height:1.3;white-space:pre-wrap;word-wrap:break-word}}
 .media{{max-width:100%;max-height:520px;border-radius:20px;object-fit:contain;align-self:flex-start}}
@@ -279,7 +279,7 @@ html,body{{width:{W}px;background:transparent;color:{fg};
 .lcthumb{{width:100%;max-height:360px;object-fit:cover;display:block}}
 .lcmeta{{padding:24px 30px;display:flex;flex-direction:column;gap:8px}}
 .lcdomain{{font-size:24px;color:{sub}}}
-.lctitle{{font-size:32px;font-weight:700;line-height:1.25}}
+.lctitle{{font-size:28px;font-weight:700;line-height:1.25}}
 .lcdesc{{font-size:26px;color:{sub};line-height:1.3;
   display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}}
 .quote{{border:2px solid {sub};border-radius:20px;padding:26px 30px;display:flex;
@@ -299,13 +299,14 @@ def slide_html(post, idx, total, dark, bgcolor=DEFAULT_BG):
     return slide_group_html([(idx, post)], total, dark, bgcolor)
 
 
-# Set the main text of every card on the slide to `uniformSize`, then, if the
-# stack overflows CARD_MAX_H, compress each card's quote first (quoted text, then
-# quoted image) so the quoting post keeps its size, and only as a last resort
-# shrink the main text of all cards together. Returns the main size it settled on
-# (pass 1 uses this per single post to find the smallest size the thread needs).
+# Set the main text of every card to `uniformSize` (and the quote a bit smaller,
+# so a quoted post never looks larger than the quoting one). Then, if the stack
+# overflows CARD_MAX_H, compress each card's embeds first — quoted text, quoted
+# image, link-card thumbnail — so the quoting post keeps its size, and only as a
+# last resort shrink the main text of all cards together. Returns the main size
+# it settled on (pass 1 uses this per single post to find the thread's minimum).
 FIT_JS = """(uniformSize) => {
-  const MAX_H = %d, MIN_MAIN = 20, MIN_QUOTE = 16, MIN_QIMG = 110;
+  const MAX_H = %d, MIN_MAIN = 20, MIN_QUOTE = 16, MIN_QIMG = 110, MIN_LCIMG = 160;
   const stack = document.querySelector('.stack');
   const cards = Array.from(document.querySelectorAll('.card'));
   const h = () => Math.ceil(stack.getBoundingClientRect().height);
@@ -313,13 +314,18 @@ FIT_JS = """(uniformSize) => {
   const setMain = px => cards.forEach(c => {
     const t = c.querySelector('.text'); if (t) t.style.fontSize = px + 'px';
   });
+  // Quote text tracks the main size but stays smaller (and never below MIN_QUOTE).
+  const qBase = Math.max(MIN_QUOTE, Math.min(30, s - 6));
+  document.querySelectorAll('.qtext').forEach(q => q.style.fontSize = qBase + 'px');
   setMain(s);
   if (h() > MAX_H) {
     cards.forEach(c => {
       const q = c.querySelector('.qtext');
-      if (q) { let qs = 30; while (h() > MAX_H && qs > MIN_QUOTE) { qs -= 2; q.style.fontSize = qs + 'px'; } }
+      if (q) { let qs = qBase; while (h() > MAX_H && qs > MIN_QUOTE) { qs -= 2; q.style.fontSize = qs + 'px'; } }
       const qm = c.querySelectorAll('.qmedia');
       if (qm.length) { let cap = 300; while (h() > MAX_H && cap > MIN_QIMG) { cap -= 20; qm.forEach(m => m.style.maxHeight = cap + 'px'); } }
+      const lc = c.querySelectorAll('.lcthumb');
+      if (lc.length) { let cap = 360; while (h() > MAX_H && cap > MIN_LCIMG) { cap -= 20; lc.forEach(m => m.style.maxHeight = cap + 'px'); } }
     });
     while (h() > MAX_H && s > MIN_MAIN) { s -= 2; setMain(s); }
   }
