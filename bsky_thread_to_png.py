@@ -92,20 +92,44 @@ def collect_self_thread(node):
 
 
 def _images_from_view(e):
-    """Media images from a single embed *view* dict (not the quoted record)."""
+    """Media images from a single embed *view* dict (not the quoted record).
+    External embeds are handled as link cards (see _external_from_view), not as
+    plain images."""
     t = (e or {}).get("$type", "")
     if t.startswith("app.bsky.embed.images"):
         return [(i["fullsize"], i.get("alt", "")) for i in e.get("images", [])]
     if t.startswith("app.bsky.embed.recordWithMedia"):
         return _images_from_view(e.get("media", {}))
-    if t.startswith("app.bsky.embed.external"):
-        th = e.get("external", {}).get("thumb")
-        return [(th, "")] if th else []
     return []
 
 
 def embed_images(post):
     return _images_from_view(post.get("embed") or {})
+
+
+def _external_from_view(e):
+    """Link-card fields from an external embed view, or None.
+    Handles app.bsky.embed.external#view and the media half of recordWithMedia."""
+    t = (e or {}).get("$type", "")
+    if t.startswith("app.bsky.embed.recordWithMedia"):
+        return _external_from_view(e.get("media", {}))
+    if t.startswith("app.bsky.embed.external"):
+        ext = e.get("external") or {}
+        if ext.get("uri"):
+            return {"uri": ext["uri"], "title": ext.get("title", ""),
+                    "description": ext.get("description", ""), "thumb": ext.get("thumb", "")}
+    return None
+
+
+def embed_external(post):
+    return _external_from_view(post.get("embed") or {})
+
+
+def _domain(uri):
+    """Bare display domain for a URL, e.g. https://www.aol.com/x -> aol.com."""
+    m = re.match(r"https?://([^/?#]+)", uri)
+    host = m.group(1) if m else uri
+    return host[4:] if host.startswith("www.") else host
 
 
 def embed_quote(post):
@@ -160,6 +184,18 @@ def _quote_html(q, esc):
     )
 
 
+def _external_html(ext, esc):
+    """Render an external embed as a Bluesky-style link card, or '' when None."""
+    if not ext:
+        return ""
+    thumb = f'<img class="lcthumb" src="{esc(ext["thumb"])}" alt="">' if ext["thumb"] else ""
+    domain = f'<div class="lcdomain">{esc(_domain(ext["uri"]))}</div>'
+    title = f'<div class="lctitle">{esc(ext["title"])}</div>' if ext["title"] else ""
+    desc = f'<div class="lcdesc">{esc(ext["description"])}</div>' if ext["description"] else ""
+    return (f'<div class="linkcard">{thumb}'
+            f'<div class="lcmeta">{domain}{title}{desc}</div></div>')
+
+
 def canvas_bg_css(bgcolor):
     """Resolve the --bgcolor value to a CSS background for the canvas."""
     return "transparent" if bgcolor.strip().lower() in ("none", "transparent", "") else bgcolor
@@ -173,6 +209,7 @@ def _card_html(idx, post, total, esc, header=True):
         f'<img class="media" src="{esc(u)}" alt="{esc(alt)}">'
         for u, alt in embed_images(post)
     )
+    link = _external_html(embed_external(post), esc)
     quote = _quote_html(embed_quote(post), esc)
     head = ""
     if header:
@@ -185,7 +222,7 @@ def _card_html(idx, post, total, esc, header=True):
                 f'<div><div class="name">{name}</div>'
                 f'<div class="handle">@{handle}</div></div></div>')
     return (f'<div class="card">{head}'
-            f'<div class="body"><div class="text">{text}</div>{imgs}{quote}</div>'
+            f'<div class="body"><div class="text">{text}</div>{imgs}{link}{quote}</div>'
             f'<div class="foot">{idx}/{total}</div></div>')
 
 
@@ -219,6 +256,14 @@ html,body{{width:{W}px;background:transparent;color:{fg};
 .body{{flex:1;display:flex;flex-direction:column;gap:28px}}
 .text{{font-size:48px;line-height:1.3;white-space:pre-wrap;word-wrap:break-word}}
 .media{{max-width:100%;max-height:520px;border-radius:20px;object-fit:contain;align-self:flex-start}}
+.linkcard{{border:2px solid {sub};border-radius:20px;overflow:hidden;
+  display:flex;flex-direction:column}}
+.lcthumb{{width:100%;max-height:360px;object-fit:cover;display:block}}
+.lcmeta{{padding:24px 30px;display:flex;flex-direction:column;gap:8px}}
+.lcdomain{{font-size:24px;color:{sub}}}
+.lctitle{{font-size:32px;font-weight:700;line-height:1.25}}
+.lcdesc{{font-size:26px;color:{sub};line-height:1.3;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}}
 .quote{{border:2px solid {sub};border-radius:20px;padding:26px 30px;display:flex;
   flex-direction:column;gap:16px}}
 .qhead{{display:flex;align-items:center;gap:14px}}
@@ -286,6 +331,12 @@ def thread_markdown(posts):
         for url, alt in embed_images(post):
             lines.append("")
             lines.append(f"- image: {url}" + (f" — alt: {alt}" if alt else ""))
+        ext = embed_external(post)
+        if ext:
+            lines.append("")
+            lines.append(f"- link: {ext['title'] or _domain(ext['uri'])} — {ext['uri']}")
+            if ext["description"]:
+                lines.append(f"  {ext['description']}")
         q = embed_quote(post)
         if q:
             lines.append("")

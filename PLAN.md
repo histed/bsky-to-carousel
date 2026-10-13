@@ -28,6 +28,10 @@ Roadmap and pending decisions for bsky-to-carousel. Design rationale lives in
   fit at the uniform size (greedy, max two per slide); `--no-pack` keeps one per
   slide. Each card keeps its own author header and `n/N` footer. PNGs are
   numbered by slide; footers stay by post position.
+- **Bluesky-style link cards.** External embeds (`app.bsky.embed.external`, and
+  the media half of `recordWithMedia`) render as a preview card: thumbnail on
+  top, then domain, title, and a clamped description. Replaces the old
+  thumbnail-only treatment. In-text link facets are still plain text (see Next).
 
 ## Next
 
@@ -35,14 +39,12 @@ Roadmap and pending decisions for bsky-to-carousel. Design rationale lives in
   `@First Last` (its `displayName`, no quotes) rather than the raw
   `@handle.bsky.social`. (Same idea may apply to in-text `@mentions` via
   facets.)
-- **Link cards styled like Bluesky.** Pasted links / external embeds
-  (`app.bsky.embed.external`) should render as Bluesky-style preview cards
-  (chips/link-preview boxes: thumbnail, title, description, domain) instead of
-  the current thumbnail-only / plain-truncated-URL treatment. Match Bluesky's
-  visual layout as closely as practical.
-  - Source fields: `embed.external.{uri, title, description, thumb}`.
-  - Also revisit facets so in-text links render as links rather than the
-    truncated `www.exa…` plain text currently shown.
+- **Bluesky butterfly watermark.** Show the small Bluesky butterfly logo in the
+  top-right corner of each card (inline SVG, tinted to match the theme), so the
+  carousel reads as Bluesky content.
+- **Facets so in-text links render as links.** Revisit facets so a pasted link
+  in the body renders as a real link rather than the truncated `www.exa…` plain
+  text currently shown. (Same mechanism can expand in-text `@mentions`.)
 
 ## Known limitations (from the design doc)
 

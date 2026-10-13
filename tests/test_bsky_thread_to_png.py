@@ -87,16 +87,12 @@ def test_embed_images_record_with_media():
     assert mod.embed_images(make_post("did:a", embed=embed)) == [("https://cdn/m.jpg", "x")]
 
 
-def test_embed_images_external_thumb():
+def test_embed_images_external_is_not_an_image():
+    # external embeds are link cards, not plain media images
     embed = {
         "$type": "app.bsky.embed.external#view",
         "external": {"thumb": "https://cdn/thumb.jpg", "uri": "https://ex"},
     }
-    assert mod.embed_images(make_post("did:a", embed=embed)) == [("https://cdn/thumb.jpg", "")]
-
-
-def test_embed_images_external_without_thumb():
-    embed = {"$type": "app.bsky.embed.external#view", "external": {"uri": "https://ex"}}
     assert mod.embed_images(make_post("did:a", embed=embed)) == []
 
 
@@ -105,15 +101,62 @@ def test_embed_images_unknown_type():
     assert mod.embed_images(make_post("did:a", embed=embed)) == []
 
 
-def test_embed_images_record_with_media_external_thumb():
-    # recordWithMedia whose media is an external card -> use its thumb
+# --- embed_external (link cards) --------------------------------------------
+
+def _external_view(uri="https://www.aol.com/articles/adventure",
+                   title="A Title", desc="A description", thumb="https://cdn/t.jpg"):
+    ext = {"uri": uri}
+    if title is not None:
+        ext["title"] = title
+    if desc is not None:
+        ext["description"] = desc
+    if thumb is not None:
+        ext["thumb"] = thumb
+    return {"$type": "app.bsky.embed.external#view", "external": ext}
+
+
+def test_embed_external_fields():
+    e = mod.embed_external(make_post("did:a", embed=_external_view()))
+    assert e == {"uri": "https://www.aol.com/articles/adventure", "title": "A Title",
+                 "description": "A description", "thumb": "https://cdn/t.jpg"}
+
+
+def test_embed_external_none_without_embed():
+    assert mod.embed_external(make_post("did:a")) is None
+
+
+def test_embed_external_requires_uri():
+    embed = {"$type": "app.bsky.embed.external#view", "external": {"title": "no uri"}}
+    assert mod.embed_external(make_post("did:a", embed=embed)) is None
+
+
+def test_embed_external_record_with_media():
     embed = {
         "$type": "app.bsky.embed.recordWithMedia#view",
-        "media": {"$type": "app.bsky.embed.external#view",
-                  "external": {"thumb": "https://cdn/t.jpg"}},
+        "media": _external_view(uri="https://example.com/x", title="RWM"),
         "record": {"$type": "app.bsky.embed.record#view", "record": {}},
     }
-    assert mod.embed_images(make_post("did:a", embed=embed)) == [("https://cdn/t.jpg", "")]
+    e = mod.embed_external(make_post("did:a", embed=embed))
+    assert e["uri"] == "https://example.com/x" and e["title"] == "RWM"
+
+
+def test_domain_strips_scheme_and_www():
+    assert mod._domain("https://www.aol.com/articles/x?y=1") == "aol.com"
+    assert mod._domain("http://example.org") == "example.org"
+
+
+def test_external_html_renders_card_parts():
+    out = mod._external_html(mod.embed_external(make_post("did:a", embed=_external_view())),
+                             __import__("html").escape)
+    assert 'class="linkcard"' in out
+    assert 'class="lcdomain">aol.com<' in out
+    assert 'class="lctitle">A Title<' in out
+    assert 'class="lcdesc">A description<' in out
+    assert 'class="lcthumb" src="https://cdn/t.jpg"' in out
+
+
+def test_external_html_empty_when_none():
+    assert mod._external_html(None, __import__("html").escape) == ""
 
 
 # --- embed_quote ------------------------------------------------------------
