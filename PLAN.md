@@ -36,8 +36,8 @@ Roadmap and pending decisions for bsky-to-carousel. Design rationale lives in
 - **Bluesky butterfly watermark.** The Bluesky butterfly (inline SVG, Bluesky
   blue) sits in the top-right of every card, vertically aligned with the avatar.
 - **In-text mentions as blue display names.** Mention facets in the body render
-  as a blue span showing the mentioned account's display name (e.g.
-  `@Brian Beutler` instead of `@brianbeutler.bsky.social`). DIDs are resolved
+  as a blue span showing the mentioned account's display name with no `@` (e.g.
+  `Brian Beutler` instead of `@brianbeutler.bsky.social`). DIDs are resolved
   once per run via `getProfiles`; an unresolved mention keeps the handle text.
 
 ## Next

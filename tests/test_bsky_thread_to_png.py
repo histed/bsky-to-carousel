@@ -405,7 +405,7 @@ def test_render_text_mention_uses_display_name_in_blue():
     be = len("hi @c-span.bsky.social".encode())
     rec = _mention_record(text, bs, be, "did:plc:x")
     out = mod.render_text_html(rec, __import__("html").escape, {"did:plc:x": "C-SPAN"})
-    assert '<span class="mention">@C-SPAN</span>' in out
+    assert '<span class="mention">C-SPAN</span>' in out  # no leading @
     assert "c-span.bsky.social" not in out
     assert out.startswith("hi ") and out.endswith(" !")
 
@@ -425,7 +425,7 @@ def test_render_text_byte_offsets_with_multibyte():
     rec = _mention_record(text, bs, be, "did:plc:z")
     out = mod.render_text_html(rec, __import__("html").escape, {"did:plc:z": "Al"})
     assert out.startswith("😀 ")
-    assert '<span class="mention">@Al</span>' in out
+    assert '<span class="mention">Al</span>' in out
 
 
 def test_mention_dids_collects_across_posts():

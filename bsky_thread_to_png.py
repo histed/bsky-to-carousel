@@ -251,7 +251,7 @@ def render_text_html(record, esc, names=None):
             continue
         out.append(esc(raw[pos:bs].decode("utf-8", "ignore")))
         name = names.get(did)
-        label = f"@{name}" if name else raw[bs:be].decode("utf-8", "ignore")
+        label = name if name else raw[bs:be].decode("utf-8", "ignore")
         out.append(f'<span class="mention">{esc(label)}</span>')
         pos = be
     out.append(esc(raw[pos:].decode("utf-8", "ignore")))
