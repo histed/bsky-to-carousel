@@ -26,6 +26,9 @@ pixi run python bsky_thread_to_png.py https://bsky.app/profile/HANDLE/post/RKEY 
 pixi run python bsky_thread_to_png.py https://bsky.app/profile/HANDLE/post/RKEY -o slides --bgcolor "#ffd6e7"
 pixi run python bsky_thread_to_png.py https://bsky.app/profile/HANDLE/post/RKEY -o slides --bgcolor none
 
+# One post per slide (disable two-post packing)
+pixi run python bsky_thread_to_png.py https://bsky.app/profile/HANDLE/post/RKEY -o slides --no-pack
+
 # Text-only preview of the collected thread — no browser needed
 pixi run preview https://bsky.app/profile/HANDLE/post/RKEY --markdown preview.md
 ```
@@ -35,17 +38,26 @@ ignoring other people's replies.
 
 ## Output
 
-Each post becomes one `NN.png` in the output directory (`-o`, default
+Slides are written as `NN.png` in the output directory (`-o`, default
 `bsky_slides/`), numbered `01.png`, `02.png`, … in thread order (root first).
 Each card shows the author's avatar, display name, `@handle`, the post text,
 any embedded images, a quoted post (if any) as a smaller nested card, and an
-`n/N` position footer.
+`n/N` footer (the post's position in the thread).
 
-**Canvas:** every PNG is the same **1080×1350** (Instagram 4:5). The post
-renders as a rounded card ~800px wide, centered with a transparent gutter each
-side and top-aligned, so the card height varies with content while the image
-size never does. A card too tall for the canvas is auto-shrunk to fit (the
-quoted card compresses first, the main text only as a last resort).
+**Canvas:** every PNG is the same **1080×1350** (Instagram 4:5). A post renders
+as a rounded card ~800px wide, centered with a transparent gutter each side and
+top-aligned, so card height varies with content while the image size never
+does. A card too tall for the canvas is auto-shrunk to fit (the quoted card
+compresses first, the main text only as a last resort).
+
+**Uniform text:** the whole carousel shares one main-text size — the smallest
+any single post needs — so type is consistent slide to slide (one very long
+post pulls every slide down to its size).
+
+**Two-up packing:** by default, two consecutive posts share a slide when both
+fit at that size, so the slide count can be less than the post count. Each card
+keeps its own author header and `n/N` footer. Pass `--no-pack` for strictly one
+post per slide.
 
 **Background:** `--bgcolor HEX` fills the canvas behind the card (default
 `#bde0fe`, a light sky blue). `--bgcolor none` makes the canvas transparent and

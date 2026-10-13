@@ -8,3 +8,6 @@ __pycache__/
 
 # generated slides
 bsky_slides/
+
+# macOS
+.DS_Store

@@ -328,6 +328,25 @@ def test_slide_html_custom_and_transparent_bgcolor():
     assert "#ffffff" in clear
 
 
+# --- two-post packing -------------------------------------------------------
+
+def test_slide_group_two_cards_each_with_header_and_footer():
+    g = [(3, make_post("did:a", name="Alice", text="first")),
+         (4, make_post("did:a", name="Alice", text="second"))]
+    out = mod.slide_group_html(g, 11, dark=False)
+    assert out.count('class="card"') == 2
+    # every card draws the author header
+    assert out.count('class="head"') == 2
+    # and each keeps its own n/N footer
+    assert "3/11" in out and "4/11" in out
+    assert "first" in out and "second" in out
+
+
+def test_slide_group_single_matches_slide_html():
+    p = make_post("did:a", text="solo")
+    assert mod.slide_group_html([(2, p)], 5, dark=False) == mod.slide_html(p, 2, 5, dark=False)
+
+
 # --- thread_markdown --------------------------------------------------------
 
 def test_thread_markdown_numbers_and_text():

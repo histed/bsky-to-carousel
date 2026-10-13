@@ -21,6 +21,13 @@ Roadmap and pending decisions for bsky-to-carousel. Design rationale lives in
   fit step compresses the *quoted* card (quote text, then quoted image) and only
   shrinks the main post text as a last resort, so the quoting post reads as if
   there were no quote.
+- **Uniform text size across the carousel.** A two-pass render finds the
+  smallest main-text size any single post needs and pins every slide to it, so
+  type is consistent across all slides rather than varying per post.
+- **Pack two posts per slide.** Two consecutive posts share one slide when both
+  fit at the uniform size (greedy, max two per slide); `--no-pack` keeps one per
+  slide. Each card keeps its own author header and `n/N` footer. PNGs are
+  numbered by slide; footers stay by post position.
 
 ## Next
 
