@@ -63,6 +63,16 @@ post per slide.
 `#bde0fe`, a light sky blue). `--bgcolor none` makes the canvas transparent and
 writes RGBA PNGs, so you can drop in your own background afterward.
 
+### Posting to Instagram
+
+The PNGs are 1080×1350 (4:5 portrait), the tallest size Instagram shows in-feed.
+When you add them in the Instagram composer, **tap the crop/aspect icon** (the
+`⤢` two-arrows button at the bottom-left of the preview) and choose **4:5 /
+original** — otherwise Instagram defaults to a square (1:1) crop and cuts off
+the top and bottom of each card. For a carousel, set it on the first image and
+Instagram applies that ratio to all of them. (Instagram carousels hold up to 20
+images.)
+
 ### Themes
 
 **Light is the default; pass `--dark` for the dark theme.**
